@@ -25,6 +25,41 @@ Add to your OpenCode configuration:
 
 Restart OpenCode. The plugin will automatically start optimizing your sessions.
 
+## Updating
+
+The plugin does **not** automatically update when you launch OpenCode. To update to the latest version:
+
+```bash
+cd ~/.config/opencode
+npm install @tarquinen/opencode-dcp@latest
+```
+
+Then restart OpenCode.
+
+To check your current version:
+
+```bash
+npm list @tarquinen/opencode-dcp
+```
+
+To check the latest available version:
+
+```bash
+npm view @tarquinen/opencode-dcp version
+```
+
+### Version Pinning
+
+If you want to ensure a specific version is always used, you can pin it in your config:
+
+```json
+{
+  "plugin": [
+    "@tarquinen/opencode-dcp@0.1.11"
+  ]
+}
+```
+
 ## Debug Logging
 
 Enable debug logging by setting the `OPENCODE_DCP_DEBUG` environment variable:
