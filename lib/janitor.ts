@@ -337,7 +337,7 @@ export class Janitor {
                             pruned_tool_call_ids: z.array(z.string()),
                             reasoning: z.string(),
                         }),
-                        prompt: buildAnalysisPrompt(prunableToolCallIds, sanitizedMessages, this.protectedTools)
+                        prompt: buildAnalysisPrompt(prunableToolCallIds, sanitizedMessages, this.protectedTools, allPrunedSoFar, protectedToolCallIds)
                     })
 
                     // Filter LLM results to only include IDs that were actually candidates

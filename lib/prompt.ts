@@ -1,8 +1,13 @@
 /**
  * Minimize message structure for AI analysis - keep only what's needed
  * to determine if tool calls are obsolete
+ * Also replaces callIDs of already-pruned tools with "<already-pruned>"
+ * and protected tools with "<protected>"
  */
-function minimizeMessages(messages: any[]): any[] {
+function minimizeMessages(messages: any[], alreadyPrunedIds?: string[], protectedToolCallIds?: string[]): any[] {
+    const prunedIdsSet = alreadyPrunedIds ? new Set(alreadyPrunedIds.map(id => id.toLowerCase())) : new Set()
+    const protectedIdsSet = protectedToolCallIds ? new Set(protectedToolCallIds.map(id => id.toLowerCase())) : new Set()
+    
     return messages.map(msg => {
         const minimized: any = {
             role: msg.info?.role
@@ -29,9 +34,20 @@ function minimizeMessages(messages: any[]): any[] {
 
                     // For tool parts, keep what's needed for pruning decisions
                     if (part.type === 'tool') {
+                        const callIDLower = part.callID?.toLowerCase()
+                        const isAlreadyPruned = prunedIdsSet.has(callIDLower)
+                        const isProtected = protectedIdsSet.has(callIDLower)
+                        
+                        let displayCallID = part.callID
+                        if (isAlreadyPruned) {
+                            displayCallID = '<already-pruned>'
+                        } else if (isProtected) {
+                            displayCallID = '<protected>'
+                        }
+                        
                         const toolPart: any = {
                             type: 'tool',
-                            callID: part.callID,
+                            callID: displayCallID,
                             tool: part.tool
                         }
 
@@ -75,24 +91,26 @@ function minimizeMessages(messages: any[]): any[] {
     })
 }
 
-export function buildAnalysisPrompt(unprunedToolCallIds: string[], messages: any[], protectedTools: string[]): string {
+export function buildAnalysisPrompt(unprunedToolCallIds: string[], messages: any[], protectedTools: string[], alreadyPrunedIds?: string[], protectedToolCallIds?: string[]): string {
     const protectedToolsText = protectedTools.length > 0
         ? `- NEVER prune tool calls from these protected tools: ${protectedTools.join(", ")}\n`
         : '';
 
-    // Minimize messages to reduce token usage
-    const minimizedMessages = minimizeMessages(messages)
+    // Minimize messages to reduce token usage, passing already-pruned and protected IDs for replacement
+    const minimizedMessages = minimizeMessages(messages, alreadyPrunedIds, protectedToolCallIds)
+    
+    // Stringify with pretty-printing, then replace escaped newlines with actual newlines
+    // This makes the logged prompts much more readable
+    const messagesJson = JSON.stringify(minimizedMessages, null, 2).replace(/\\n/g, '\n')
 
     return `You are a conversation analyzer that identifies obsolete tool outputs in a coding session.
 
 Your task: Analyze the session history and identify tool call IDs whose outputs are NO LONGER RELEVANT to the current conversation context.
 
 Guidelines for identifying obsolete tool calls:
-1. Tool outputs that were superseded by newer reads of the same file/resource
-2. Exploratory reads that didn't lead to actual edits or meaningful discussion AND were not explicitly requested to be retained
-3. Tool calls from >10 turns ago that are no longer referenced and have served their purpose
-4. Error outputs that were subsequently fixed
-5. Tool calls whose information has been replaced by more recent operations
+1. Exploratory reads that didn't lead to actual edits or meaningful discussion AND were not explicitly requested to be retained
+2. Tool outputs from debugging/fixing an error that has now been resolved
+3. Failed or incorrect tool attempts that were immediately corrected (e.g., reading a file from the wrong path, then reading from the correct path)
 
 DO NOT prune:
 ${protectedToolsText}
@@ -104,10 +122,14 @@ ${protectedToolsText}
 
 IMPORTANT: Available tool call IDs for analysis: ${unprunedToolCallIds.join(", ")}
 
-You may see additional tool call IDs in the session history below, but those have already been pruned (either by automatic deduplication or previous analysis runs) and their outputs replaced with placeholders. ONLY return IDs from the available list above.
+The session history below may contain tool calls with IDs not in the available list above. These are either:
+1. Protected tools (marked with callID "<protected>")
+2. Already-pruned tools (marked with callID "<already-pruned>")
+
+ONLY return IDs from the available list above.
 
 Session history:
-${JSON.stringify(minimizedMessages, null, 2)}
+${messagesJson}
 
 You MUST respond with valid JSON matching this exact schema:
 {
