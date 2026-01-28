@@ -54,6 +54,7 @@ export interface PluginConfig {
     enabled: boolean
     debug: boolean
     pruneNotification: "off" | "minimal" | "detailed"
+    notificationType: "chat" | "toast"
     commands: Commands
     turnProtection: TurnProtection
     protectedFilePatterns: string[]
@@ -86,6 +87,7 @@ export const VALID_CONFIG_KEYS = new Set([
     "debug",
     "showUpdateToasts", // Deprecated but kept for backwards compatibility
     "pruneNotification",
+    "notificationType",
     "turnProtection",
     "turnProtection.enabled",
     "turnProtection.turns",
@@ -161,6 +163,17 @@ function validateConfigTypes(config: Record<string, any>): ValidationError[] {
                 key: "pruneNotification",
                 expected: '"off" | "minimal" | "detailed"',
                 actual: JSON.stringify(config.pruneNotification),
+            })
+        }
+    }
+
+    if (config.notificationType !== undefined) {
+        const validValues = ["chat", "toast"]
+        if (!validValues.includes(config.notificationType)) {
+            errors.push({
+                key: "notificationType",
+                expected: '"chat" | "toast"',
+                actual: JSON.stringify(config.notificationType),
             })
         }
     }
@@ -424,6 +437,7 @@ const defaultConfig: PluginConfig = {
     enabled: true,
     debug: false,
     pruneNotification: "detailed",
+    notificationType: "chat",
     commands: {
         enabled: true,
         protectedTools: [...DEFAULT_PROTECTED_TOOLS],
@@ -693,6 +707,7 @@ export function getConfig(ctx: PluginInput): PluginConfig {
                 enabled: result.data.enabled ?? config.enabled,
                 debug: result.data.debug ?? config.debug,
                 pruneNotification: result.data.pruneNotification ?? config.pruneNotification,
+                notificationType: result.data.notificationType ?? config.notificationType,
                 commands: mergeCommands(config.commands, result.data.commands as any),
                 turnProtection: {
                     enabled: result.data.turnProtection?.enabled ?? config.turnProtection.enabled,
@@ -736,6 +751,7 @@ export function getConfig(ctx: PluginInput): PluginConfig {
                 enabled: result.data.enabled ?? config.enabled,
                 debug: result.data.debug ?? config.debug,
                 pruneNotification: result.data.pruneNotification ?? config.pruneNotification,
+                notificationType: result.data.notificationType ?? config.notificationType,
                 commands: mergeCommands(config.commands, result.data.commands as any),
                 turnProtection: {
                     enabled: result.data.turnProtection?.enabled ?? config.turnProtection.enabled,
@@ -776,6 +792,7 @@ export function getConfig(ctx: PluginInput): PluginConfig {
                 enabled: result.data.enabled ?? config.enabled,
                 debug: result.data.debug ?? config.debug,
                 pruneNotification: result.data.pruneNotification ?? config.pruneNotification,
+                notificationType: result.data.notificationType ?? config.notificationType,
                 commands: mergeCommands(config.commands, result.data.commands as any),
                 turnProtection: {
                     enabled: result.data.turnProtection?.enabled ?? config.turnProtection.enabled,

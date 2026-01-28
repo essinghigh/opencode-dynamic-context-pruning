@@ -99,6 +99,47 @@ export async function sendUnifiedNotification(
                   showDistillation,
               )
 
+    if (config.notificationType === "toast" && client?.tui?.showToast) {
+        const title = formatStatsHeader(
+            state.stats.totalPruneTokens,
+            state.stats.pruneTokenCounter,
+        ).split("\n")[0]
+
+        let toastMsg = ""
+
+        if (pruneToolIds.length > 0) {
+            const pruneTokenCounterStr = `~${formatTokenCount(state.stats.pruneTokenCounter)}`
+            const extractedTokens = countDistillationTokens(distillation)
+            const extractedSuffix =
+                extractedTokens > 0 ? `, extracted ${formatTokenCount(extractedTokens)}` : ""
+            const reasonLabel =
+                reason && extractedTokens === 0 ? ` — ${PRUNE_REASON_LABELS[reason]}` : ""
+
+            toastMsg += `▣ Pruning (${pruneTokenCounterStr}${extractedSuffix})${reasonLabel}`
+
+            const itemLines = formatPrunedItemsList(pruneToolIds, toolMetadata, workingDirectory)
+            toastMsg += "\n" + itemLines.join("\n")
+        }
+
+        if (distillation && distillation.length > 0) {
+            toastMsg += formatExtracted(distillation)
+        }
+
+        try {
+            await client.tui.showToast({
+                body: {
+                    title: title,
+                    message: toastMsg,
+                    variant: "success",
+                    duration: 4000,
+                },
+            })
+            return true
+        } catch (error) {
+            logger.warn("Failed to show toast, falling back to message", { error })
+        }
+    }
+
     await sendIgnoredMessage(client, sessionId, message, params, logger)
     return true
 }
