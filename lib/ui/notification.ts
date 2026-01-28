@@ -17,6 +17,32 @@ export const PRUNE_REASON_LABELS: Record<PruneReason, string> = {
     extraction: "Extraction",
 }
 
+function buildPruneDetails(
+    state: SessionState,
+    reason: PruneReason | undefined,
+    pruneToolIds: string[],
+    toolMetadata: Map<string, ToolParameterEntry>,
+    workingDirectory: string,
+    distillation: string[] | undefined,
+): string {
+    if (pruneToolIds.length === 0) {
+        return ""
+    }
+
+    const pruneTokenCounterStr = `~${formatTokenCount(state.stats.pruneTokenCounter)}`
+    const extractedTokens = countDistillationTokens(distillation)
+    const extractedSuffix =
+        extractedTokens > 0 ? `, extracted ${formatTokenCount(extractedTokens)}` : ""
+    const reasonLabel = reason && extractedTokens === 0 ? ` — ${PRUNE_REASON_LABELS[reason]}` : ""
+
+    let message = `▣ Pruning (${pruneTokenCounterStr}${extractedSuffix})${reasonLabel}`
+
+    const itemLines = formatPrunedItemsList(pruneToolIds, toolMetadata, workingDirectory)
+    message += "\n" + itemLines.join("\n")
+
+    return message
+}
+
 function buildMinimalMessage(
     state: SessionState,
     reason: PruneReason | undefined,
@@ -46,17 +72,17 @@ function buildDetailedMessage(
 ): string {
     let message = formatStatsHeader(state.stats.totalPruneTokens, state.stats.pruneTokenCounter)
 
-    if (pruneToolIds.length > 0) {
-        const pruneTokenCounterStr = `~${formatTokenCount(state.stats.pruneTokenCounter)}`
-        const extractedTokens = countDistillationTokens(distillation)
-        const extractedSuffix =
-            extractedTokens > 0 ? `, extracted ${formatTokenCount(extractedTokens)}` : ""
-        const reasonLabel =
-            reason && extractedTokens === 0 ? ` — ${PRUNE_REASON_LABELS[reason]}` : ""
-        message += `\n\n▣ Pruning (${pruneTokenCounterStr}${extractedSuffix})${reasonLabel}`
+    const details = buildPruneDetails(
+        state,
+        reason,
+        pruneToolIds,
+        toolMetadata,
+        workingDirectory,
+        distillation,
+    )
 
-        const itemLines = formatPrunedItemsList(pruneToolIds, toolMetadata, workingDirectory)
-        message += "\n" + itemLines.join("\n")
+    if (details) {
+        message += "\n\n" + details
     }
 
     return (message + formatExtracted(showDistillation ? distillation : undefined)).trim()
@@ -105,21 +131,14 @@ export async function sendUnifiedNotification(
             state.stats.pruneTokenCounter,
         ).split("\n")[0]
 
-        let toastMsg = ""
-
-        if (pruneToolIds.length > 0) {
-            const pruneTokenCounterStr = `~${formatTokenCount(state.stats.pruneTokenCounter)}`
-            const extractedTokens = countDistillationTokens(distillation)
-            const extractedSuffix =
-                extractedTokens > 0 ? `, extracted ${formatTokenCount(extractedTokens)}` : ""
-            const reasonLabel =
-                reason && extractedTokens === 0 ? ` — ${PRUNE_REASON_LABELS[reason]}` : ""
-
-            toastMsg += `▣ Pruning (${pruneTokenCounterStr}${extractedSuffix})${reasonLabel}`
-
-            const itemLines = formatPrunedItemsList(pruneToolIds, toolMetadata, workingDirectory)
-            toastMsg += "\n" + itemLines.join("\n")
-        }
+        let toastMsg = buildPruneDetails(
+            state,
+            reason,
+            pruneToolIds,
+            toolMetadata,
+            workingDirectory,
+            distillation,
+        )
 
         if (distillation && distillation.length > 0) {
             toastMsg += formatExtracted(distillation)
