@@ -127,29 +127,22 @@ export async function sendUnifiedNotification(
               )
 
     if (config.notificationType === "toast" && client?.tui?.showToast) {
-        const title = formatStatsHeader(
+        const header = formatStatsHeader(
             state.stats.totalPruneTokens,
             state.stats.pruneTokenCounter,
-        ).split("\n")[0]
-
-        let toastMsg = buildPruneDetails(
-            state,
-            reason,
-            pruneToolIds,
-            toolMetadata,
-            workingDirectory,
-            distillation,
         )
+        const title = header.split("\n")[0]
 
-        if (distillation && distillation.length > 0) {
-            toastMsg += formatExtracted(distillation)
+        let toastBody = message
+        if (toastBody.startsWith(header)) {
+            toastBody = toastBody.slice(header.length).trim()
         }
 
         try {
             await client.tui.showToast({
                 body: {
                     title: title,
-                    message: toastMsg,
+                    message: toastBody,
                     variant: "success",
                     duration: 4000,
                 },
@@ -207,6 +200,33 @@ export async function sendSquashNotification(
         }
         if (config.tools.squash.showSummary) {
             message += `\n→ Summary: ${summary}`
+        }
+    }
+
+    if (config.notificationType === "toast" && client?.tui?.showToast) {
+        const header = formatStatsHeader(
+            state.stats.totalPruneTokens,
+            state.stats.pruneTokenCounter,
+        )
+        const title = header.split("\n")[0]
+
+        let toastBody = message
+        if (toastBody.startsWith(header)) {
+            toastBody = toastBody.slice(header.length).trim()
+        }
+
+        try {
+            await client.tui.showToast({
+                body: {
+                    title: title,
+                    message: toastBody,
+                    variant: "success",
+                    duration: 4000,
+                },
+            })
+            return true
+        } catch (error) {
+            logger.warn("Failed to show toast, falling back to message", { error })
         }
     }
 
