@@ -6,7 +6,7 @@ import { loadPrompt } from "../prompts"
 import {
     extractParameterKey,
     buildToolIdList,
-    createSyntheticToolPart,
+    createSyntheticAssistantMessage,
     createSyntheticUserMessage,
     isIgnoredUserMessage,
 } from "./utils"
@@ -194,8 +194,7 @@ export const insertPruneToolContext = (
     if (!lastNonIgnoredMessage || lastNonIgnoredMessage.info.role === "user") {
         messages.push(createSyntheticUserMessage(lastUserMessage, combinedContent, variant))
     } else {
-        // Append tool part to the last assistant message instead of creating a new message
-        const toolPart = createSyntheticToolPart(lastNonIgnoredMessage, combinedContent)
-        lastNonIgnoredMessage.parts.push(toolPart)
+        // Create a new assistant message with just a text part
+        messages.push(createSyntheticAssistantMessage(lastUserMessage, combinedContent, variant))
     }
 }
